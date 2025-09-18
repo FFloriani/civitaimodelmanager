@@ -4,10 +4,9 @@
   "description": "Um aplicativo web para organizar e gerenciar seus Loras, Checkpoints e outros modelos do Civitai para uso com ConfyUI",
   "main": "index.html",
   "scripts": {
-    "start": "npx http-server . -p 3000 -o",
     "dev": "npx http-server . -p 3000 -o",
-    "build": "echo 'No build process needed for this static app'",
-    "deploy": "echo 'Deploy to your preferred static hosting service'"
+    "build": "echo 'Static site - no build needed'",
+    "vercel-build": "echo 'Static site - no build needed'"
   },
   "keywords": [
     "confyui",
@@ -36,10 +35,5 @@
   },
   "devDependencies": {
     "http-server": "^14.1.1"
-  },
-  "browserslist": [
-    "> 1%",
-    "last 2 versions",
-    "not dead"
-  ]
+  }
 }
