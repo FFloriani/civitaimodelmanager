@@ -1,0 +1,45 @@
+{
+  "name": "confyui-lora-helper",
+  "version": "1.0.0",
+  "description": "Um aplicativo web para organizar e gerenciar seus Loras, Checkpoints e outros modelos do Civitai para uso com ConfyUI",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx http-server . -p 3000 -o",
+    "dev": "npx http-server . -p 3000 -o",
+    "build": "echo 'No build process needed for this static app'",
+    "deploy": "echo 'Deploy to your preferred static hosting service'"
+  },
+  "keywords": [
+    "confyui",
+    "lora",
+    "checkpoint",
+    "civitai",
+    "ai",
+    "models",
+    "management",
+    "web-app",
+    "javascript",
+    "tailwind"
+  ],
+  "author": "FFloriani",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FFloriani/civitaimodelmanager.git"
+  },
+  "homepage": "https://github.com/FFloriani/civitaimodelmanager#readme",
+  "bugs": {
+    "url": "https://github.com/FFloriani/civitaimodelmanager/issues"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Civitai API</title>
+</head>
+<body>
+    <h1>Test Civitai API</h1>
+    <button onclick="testAPI()">Test API</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function testAPI() {
+            try {
+                const response = await fetch('https://civitai.com/api/v1/models/1743952');
+                const data = await response.json();
+                
+                document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+                
+                console.log('Full API response:', data);
+                console.log('Tags:', data.tags);
+                console.log('Base Model:', data.baseModel);
+                console.log('Type:', data.type);
+                console.log('Model Versions:', data.modelVersions);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('result').textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html> 

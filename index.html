@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConfyUI Lora Helper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-magic text-2xl"></i>
+                    <h1 class="text-3xl font-bold">ConfyUI Lora Helper</h1>
+                </div>
+                <div class="flex space-x-3">
+                    <button id="quickPromptBtn" class="bg-green-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-600 transition-colors">
+                        <i class="fas fa-bolt mr-2"></i>Prompt Rápido
+                    </button>
+                    <button id="templateBtn" class="bg-orange-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-orange-600 transition-colors">
+                        <i class="fas fa-layer-group mr-2"></i>Templates
+                    </button>
+                    <button id="addModelBtn" class="bg-white text-purple-600 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+                        <i class="fas fa-plus mr-2"></i>Adicionar Modelo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Filters -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
+                    <select id="typeFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="">Todos os tipos</option>
+                        <option value="LoRA">LoRA</option>
+                        <option value="Checkpoint">Checkpoint</option>
+                        <option value="VAE">VAE</option>
+                        <option value="TextualInversion">Textual Inversion</option>
+                        <option value="ControlNet">ControlNet</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Base Model</label>
+                    <select id="baseModelFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="">Todos os modelos</option>
+                        <option value="Illustrious">Illustrious</option>
+                        <option value="SDXL">SDXL</option>
+                        <option value="SD1.5">SD 1.5</option>
+                        <option value="SD2.1">SD 2.1</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Buscar</label>
+                    <input type="text" id="searchInput" placeholder="Nome, tags, trigger words..." 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                </div>
+                <div class="flex items-end">
+                    <button id="clearFilters" class="w-full bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors">
+                        <i class="fas fa-times mr-2"></i>Limpar Filtros
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Ações Rápidas</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-bolt text-green-600 mr-2"></i>
+                        <h4 class="font-semibold text-green-800">Prompt Rápido</h4>
+                    </div>
+                    <p class="text-sm text-green-700 mb-3">Crie prompts rapidamente com seus modelos favoritos</p>
+                    <button id="createPromptBtn" class="w-full bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700 transition-colors">
+                        Criar Prompt
+                    </button>
+                </div>
+                
+                <div class="bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-lg border border-orange-200">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-layer-group text-orange-600 mr-2"></i>
+                        <h4 class="font-semibold text-orange-800">Templates</h4>
+                    </div>
+                    <p class="text-sm text-orange-700 mb-3">Use templates pré-configurados para diferentes estilos</p>
+                    <button id="useTemplateBtn" class="w-full bg-orange-600 text-white px-3 py-2 rounded text-sm hover:bg-orange-700 transition-colors">
+                        Usar Template
+                    </button>
+                </div>
+                
+                <div class="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-history text-purple-600 mr-2"></i>
+                        <h4 class="font-semibold text-purple-800">Histórico</h4>
+                    </div>
+                    <p class="text-sm text-purple-700 mb-3">Veja seus prompts e configurações recentes</p>
+                    <button id="viewHistoryBtn" class="w-full bg-purple-600 text-white px-3 py-2 rounded text-sm hover:bg-purple-700 transition-colors">
+                        Ver Histórico
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                        <i class="fas fa-layer-group text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Total</p>
+                        <p class="text-2xl font-bold text-gray-900" id="totalCount">0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                        <i class="fas fa-magic text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">LoRAs</p>
+                        <p class="text-2xl font-bold text-gray-900" id="loraCount">0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-green-100 text-green-600">
+                        <i class="fas fa-cube text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Checkpoints</p>
+                        <p class="text-2xl font-bold text-gray-900" id="checkpointCount">0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-orange-100 text-orange-600">
+                        <i class="fas fa-star text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Favoritos</p>
+                        <p class="text-2xl font-bold text-gray-900" id="favoriteCount">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Models Grid -->
+        <div id="modelsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <!-- Models will be dynamically added here -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden text-center py-12">
+            <i class="fas fa-folder-open text-6xl text-gray-300 mb-4"></i>
+            <h3 class="text-xl font-semibold text-gray-600 mb-2">Nenhum modelo encontrado</h3>
+            <p class="text-gray-500 mb-6">Adicione seu primeiro modelo para começar a organizar sua biblioteca!</p>
+            <button id="addFirstModel" class="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
+                <i class="fas fa-plus mr-2"></i>Adicionar Primeiro Modelo
+            </button>
+        </div>
+    </main>
+
+    <!-- Modal for adding/editing models -->
+    <div id="modelModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-2xl font-bold text-gray-900" id="modalTitle">Adicionar Novo Modelo</h2>
+                        <button id="closeModal" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <form id="modelForm" class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Basic Information -->
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Nome do Modelo *</label>
+                                <input type="text" id="modelName" required
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Tipo *</label>
+                                <select id="modelType" required
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    <option value="">Selecione o tipo</option>
+                                    <option value="LoRA">LoRA</option>
+                                    <option value="Checkpoint">Checkpoint</option>
+                                    <option value="VAE">VAE</option>
+                                    <option value="TextualInversion">Textual Inversion</option>
+                                    <option value="ControlNet">ControlNet</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Base Model</label>
+                                <input type="text" id="baseModel" placeholder="ex: Illustrious, SDXL, SD1.5"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Versão</label>
+                                <input type="text" id="version" placeholder="ex: v1.0, v2.0"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">URL do Civitai</label>
+                                <div class="flex space-x-2">
+                                    <input type="url" id="civitaiUrl" placeholder="https://civitai.com/models/..."
+                                           class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    <button type="button" id="fetchCivitaiBtn" 
+                                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors whitespace-nowrap">
+                                        <i class="fas fa-download mr-1"></i>Buscar
+                                    </button>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">Cole o link do Civitai e clique em "Buscar" para carregar automaticamente as informações</p>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Imagem (URL)</label>
+                                <input type="url" id="imageUrl" placeholder="https://..."
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            </div>
+                        </div>
+                        
+                        <!-- Advanced Information -->
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Peso Recomendado</label>
+                                <input type="number" id="recommendedWeight" step="0.1" min="0" max="2" placeholder="1.0"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Steps Recomendados</label>
+                                <input type="number" id="recommendedSteps" placeholder="20-30"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">CFG Scale</label>
+                                <input type="text" id="cfgScale" placeholder="7-8"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Tags</label>
+                                <input type="text" id="tags" placeholder="anime, character, woman, game character"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Favorito</label>
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="isFavorite" class="mr-2">
+                                    <label for="isFavorite" class="text-sm text-gray-700">Marcar como favorito</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Trigger Words -->
+                    <div class="mt-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Trigger Words</label>
+                        <textarea id="triggerWords" rows="3" placeholder="Digite as trigger words separadas por vírgula..."
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"></textarea>
+                    </div>
+                    
+                    <!-- Description -->
+                    <div class="mt-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Descrição</label>
+                        <textarea id="description" rows="4" placeholder="Descrição do modelo, dicas de uso, etc..."
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"></textarea>
+                    </div>
+                    
+                    <!-- Usage Recommendations -->
+                    <div class="mt-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Recomendações de Uso</label>
+                        <textarea id="usageRecommendations" rows="3" placeholder="Sampler, CFG Scale, Steps, etc..."
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"></textarea>
+                    </div>
+                    
+                    <!-- Notes -->
+                    <div class="mt-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Notas Pessoais</label>
+                        <textarea id="personalNotes" rows="3" placeholder="Suas observações pessoais sobre o modelo..."
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"></textarea>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-4 mt-6 pt-6 border-t border-gray-200">
+                        <button type="button" id="cancelBtn" class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="px-6 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">
+                            Salvar Modelo
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Model Detail Modal -->
+    <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-2xl font-bold text-gray-900" id="detailTitle">Detalhes do Modelo</h2>
+                        <button id="closeDetailModal" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="detailContent" class="p-6">
+                    <!-- Content will be dynamically populated -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
