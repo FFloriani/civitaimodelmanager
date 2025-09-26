@@ -1758,15 +1758,20 @@ class LoraHelper {
     handlePersonalPromptSubmit(e) {
         e.preventDefault();
         
+        console.log('Form submitted'); // Debug log
+        
         // Get image data (either from file upload or URL)
-        let imageData = '';
         const imageFile = document.getElementById('personalPromptImage').files[0];
         const imageUrl = document.getElementById('personalPromptImageUrl').value;
+        
+        console.log('Image file:', imageFile); // Debug log
+        console.log('Image URL:', imageUrl); // Debug log
         
         if (imageFile) {
             // Convert file to base64 for storage
             const reader = new FileReader();
             reader.onload = (e) => {
+                console.log('File reader loaded'); // Debug log
                 const promptData = {
                     id: this.currentPersonalPromptEditId || Date.now(),
                     title: document.getElementById('personalPromptTitle').value,
@@ -1794,6 +1799,7 @@ class LoraHelper {
             reader.readAsDataURL(imageFile);
         } else {
             // Use URL or existing image data
+            console.log('Using URL or existing image'); // Debug log
             const promptData = {
                 id: this.currentPersonalPromptEditId || Date.now(),
                 title: document.getElementById('personalPromptTitle').value,
@@ -2113,6 +2119,34 @@ class LoraHelper {
         this.savePersonalPrompts();
         this.renderPersonalPrompts();
         console.log('Test prompt added with SVG image');
+    }
+
+    // Simple test method without image
+    addSimpleTestPrompt() {
+        const testPrompt = {
+            id: Date.now(),
+            title: 'Teste Simples',
+            category: 'portrait',
+            tags: 'teste',
+            isFavorite: false,
+            positivePrompt: 'Teste simples',
+            negativePrompt: '',
+            steps: '20',
+            cfgScale: '7',
+            sampler: 'DPM++ 2M',
+            seed: '123456',
+            checkpoint: 'Test Checkpoint',
+            loras: 'Test LoRA',
+            notes: 'Prompt de teste simples',
+            imageUrl: '',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+        
+        this.personalPrompts.push(testPrompt);
+        this.savePersonalPrompts();
+        this.renderPersonalPrompts();
+        console.log('Simple test prompt added');
     }
 }
 
