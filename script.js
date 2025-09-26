@@ -3,7 +3,9 @@
 class LoraHelper {
     constructor() {
         this.models = JSON.parse(localStorage.getItem('loraHelperModels')) || [];
+        this.personalPrompts = JSON.parse(localStorage.getItem('personalPrompts')) || [];
         this.currentEditId = null;
+        this.currentPersonalPromptEditId = null;
         this.init();
     }
 
@@ -20,6 +22,8 @@ class LoraHelper {
         document.getElementById('addFirstModel').addEventListener('click', () => this.openModal());
 
         // Quick actions
+        document.getElementById('promptOrganizerBtn').addEventListener('click', () => this.openPromptOrganizer());
+        document.getElementById('openPromptOrganizerBtn').addEventListener('click', () => this.openPromptOrganizer());
         document.getElementById('createPromptBtn').addEventListener('click', () => this.openPromptBuilder());
         document.getElementById('useTemplateBtn').addEventListener('click', () => this.openTemplateSelector());
         document.getElementById('viewHistoryBtn').addEventListener('click', () => this.openHistory());
@@ -31,6 +35,14 @@ class LoraHelper {
 
         // Detail modal
         document.getElementById('closeDetailModal').addEventListener('click', () => this.closeDetailModal());
+
+        // Prompt Organizer modals
+        document.getElementById('closePromptOrganizerModal').addEventListener('click', () => this.closePromptOrganizer());
+        document.getElementById('addPersonalPromptBtn').addEventListener('click', () => this.openAddPersonalPromptModal());
+        document.getElementById('addFirstPersonalPrompt').addEventListener('click', () => this.openAddPersonalPromptModal());
+        document.getElementById('closeAddPersonalPromptModal').addEventListener('click', () => this.closeAddPersonalPromptModal());
+        document.getElementById('cancelPersonalPromptBtn').addEventListener('click', () => this.closeAddPersonalPromptModal());
+        document.getElementById('personalPromptForm').addEventListener('submit', (e) => this.handlePersonalPromptSubmit(e));
 
         // Filters
         document.getElementById('typeFilter').addEventListener('change', () => this.filterModels());
@@ -45,6 +57,19 @@ class LoraHelper {
         document.getElementById('detailModal').addEventListener('click', (e) => {
             if (e.target.id === 'detailModal') this.closeDetailModal();
         });
+        document.getElementById('promptOrganizerModal').addEventListener('click', (e) => {
+            if (e.target.id === 'promptOrganizerModal') this.closePromptOrganizer();
+        });
+        document.getElementById('addPersonalPromptModal').addEventListener('click', (e) => {
+            if (e.target.id === 'addPersonalPromptModal') this.closeAddPersonalPromptModal();
+        });
+
+        // Image upload for personal prompts
+        document.getElementById('personalPromptImage').addEventListener('change', (e) => this.handleImageUpload(e));
+        document.getElementById('imageUploadArea').addEventListener('click', () => document.getElementById('personalPromptImage').click());
+        document.getElementById('imageUploadArea').addEventListener('dragover', (e) => this.handleDragOver(e));
+        document.getElementById('imageUploadArea').addEventListener('drop', (e) => this.handleDrop(e));
+        document.getElementById('removeImageBtn').addEventListener('click', () => this.clearImagePreview());
 
         // Civitai URL input listener
         document.getElementById('civitaiUrl').addEventListener('blur', () => this.handleCivitaiUrlChange());
@@ -355,6 +380,9 @@ class LoraHelper {
         
         // Auto-fill recommended settings if found
         this.extractAndFillSettings(modelData.description || '');
+        
+        // NEW: Show examples and learning system
+        this.showExamplesAndLearning(modelData);
         
         // Show success notification with debug info
         console.log('Extracted data:', {
@@ -1202,6 +1230,889 @@ class LoraHelper {
         history.splice(index, 1);
         localStorage.setItem('promptHistory', JSON.stringify(history));
         this.openHistory(); // Refresh the modal
+    }
+
+    // NEW: Show examples and learning system
+    showExamplesAndLearning(modelData) {
+        // Extract all images and their metadata from all versions
+        const allExamples = this.extractAllExamples(modelData);
+        
+        if (allExamples.length > 0) {
+            // Show examples modal
+            this.showExamplesModal(allExamples, modelData);
+        }
+    }
+
+    // Extract all examples from model data
+    extractAllExamples(modelData) {
+        const examples = [];
+        
+        // Go through all model versions
+        if (modelData.modelVersions) {
+            modelData.modelVersions.forEach(version => {
+                if (version.images) {
+                    version.images.forEach(image => {
+                        const example = {
+                            id: image.id || Date.now() + Math.random(),
+                            imageUrl: `https://image.civitai.com/xG1nkqKTMzGDvpLrXFTSTA/${image.url}`,
+                            prompt: image.meta?.prompt || '',
+                            negativePrompt: image.meta?.negativePrompt || '',
+                            steps: image.meta?.steps || '',
+                            cfgScale: image.meta?.cfgScale || '',
+                            sampler: image.meta?.sampler || '',
+                            seed: image.meta?.seed || '',
+                            model: image.meta?.model || '',
+                            loras: image.meta?.loras || [],
+                            checkpoint: image.meta?.checkpoint || '',
+                            version: version.name || '',
+                            versionId: version.id || '',
+                            createdAt: image.createdAt || new Date().toISOString()
+                        };
+                        examples.push(example);
+                    });
+                }
+            });
+        }
+        
+        return examples;
+    }
+
+    // Show examples modal with learning system
+    showExamplesModal(examples, modelData) {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+        modal.innerHTML = `
+            <div class="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-2xl font-bold text-gray-900">
+                            <i class="fas fa-images mr-2"></i>Exemplos de Demonstração
+                        </h2>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                    <p class="text-gray-600 mt-2">${examples.length} exemplos encontrados para ${modelData.name}</p>
+                </div>
+                
+                <div class="p-6">
+                    <!-- Learning System -->
+                    <div class="bg-gradient-to-r from-purple-50 to-blue-50 p-4 rounded-lg mb-6 border border-purple-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="font-semibold text-purple-800 mb-2">
+                                    <i class="fas fa-brain mr-2"></i>Sistema de Aprendizado
+                                </h3>
+                                <p class="text-sm text-purple-700">
+                                    Combine todos os prompts positivos dos exemplos para treinar uma IA com este estilo
+                                </p>
+                            </div>
+                            <button onclick="app.generateLearningPrompt(${JSON.stringify(examples).replace(/"/g, '&quot;')})" 
+                                    class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                                <i class="fas fa-graduation-cap mr-2"></i>Aprender Estilo
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Examples Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        ${examples.map(example => this.createExampleCard(example)).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    }
+
+    // Create example card
+    createExampleCard(example) {
+        return `
+            <div class="bg-white border rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-200">
+                <div class="relative">
+                    <img src="${example.imageUrl}" alt="Example" class="w-full h-48 object-cover" 
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="image-placeholder w-full h-48 hidden">
+                        <i class="fas fa-image"></i>
+                    </div>
+                    
+                    <div class="absolute top-2 right-2">
+                        <button onclick="app.copyExamplePrompt(${JSON.stringify(example).replace(/"/g, '&quot;')})" 
+                                class="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors"
+                                title="Copiar Prompt">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="p-4">
+                    <h4 class="font-semibold text-gray-900 mb-2">Exemplo ${example.id}</h4>
+                    
+                    ${example.prompt ? `
+                        <div class="mb-3">
+                            <label class="text-xs font-medium text-gray-600">Prompt Positivo:</label>
+                            <p class="text-sm text-gray-700 line-clamp-2" title="${example.prompt}">${example.prompt}</p>
+                        </div>
+                    ` : ''}
+                    
+                    ${example.negativePrompt ? `
+                        <div class="mb-3">
+                            <label class="text-xs font-medium text-gray-600">Prompt Negativo:</label>
+                            <p class="text-sm text-gray-700 line-clamp-2" title="${example.negativePrompt}">${example.negativePrompt}</p>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="grid grid-cols-2 gap-2 text-xs text-gray-500 mb-3">
+                        ${example.steps ? `<div><i class="fas fa-layer-group mr-1"></i>Steps: ${example.steps}</div>` : ''}
+                        ${example.cfgScale ? `<div><i class="fas fa-sliders-h mr-1"></i>CFG: ${example.cfgScale}</div>` : ''}
+                        ${example.sampler ? `<div><i class="fas fa-cog mr-1"></i>${example.sampler}</div>` : ''}
+                        ${example.seed ? `<div><i class="fas fa-seedling mr-1"></i>Seed: ${example.seed}</div>` : ''}
+                    </div>
+                    
+                    ${example.loras && example.loras.length > 0 ? `
+                        <div class="mb-3">
+                            <label class="text-xs font-medium text-gray-600">LoRAs:</label>
+                            <div class="flex flex-wrap gap-1 mt-1">
+                                ${example.loras.map(lora => `<span class="tag text-xs">${lora.name || lora}</span>`).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    ${example.checkpoint ? `
+                        <div class="mb-3">
+                            <label class="text-xs font-medium text-gray-600">Checkpoint:</label>
+                            <p class="text-sm text-gray-700">${example.checkpoint}</p>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-gray-500">Versão: ${example.version}</span>
+                        <button onclick="app.viewExampleDetails(${JSON.stringify(example).replace(/"/g, '&quot;')})" 
+                                class="text-blue-600 hover:text-blue-800 text-sm">
+                            <i class="fas fa-eye mr-1"></i>Ver Detalhes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Generate learning prompt from all examples
+    generateLearningPrompt(examples) {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+        
+        // Extract all positive prompts
+        const allPrompts = examples
+            .filter(ex => ex.prompt && ex.prompt.trim())
+            .map(ex => ex.prompt.trim());
+        
+        // Extract all negative prompts
+        const allNegativePrompts = examples
+            .filter(ex => ex.negativePrompt && ex.negativePrompt.trim())
+            .map(ex => ex.negativePrompt.trim());
+        
+        // Extract all LoRAs used
+        const allLoras = examples
+            .flatMap(ex => ex.loras || [])
+            .filter((lora, index, self) => 
+                self.findIndex(l => (l.name || l) === (lora.name || lora)) === index
+            );
+        
+        // Extract all checkpoints used
+        const allCheckpoints = examples
+            .filter(ex => ex.checkpoint && ex.checkpoint.trim())
+            .map(ex => ex.checkpoint.trim())
+            .filter((checkpoint, index, self) => self.indexOf(checkpoint) === index);
+        
+        // Generate combined prompt
+        const combinedPrompt = allPrompts.join(', ');
+        const combinedNegativePrompt = allNegativePrompts.join(', ');
+        
+        modal.innerHTML = `
+            <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-2xl font-bold text-gray-900">
+                            <i class="fas fa-graduation-cap mr-2"></i>Prompt de Aprendizado
+                        </h2>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                    <p class="text-gray-600 mt-2">Prompt combinado de ${examples.length} exemplos para treinar IA</p>
+                </div>
+                
+                <div class="p-6 space-y-6">
+                    <!-- Combined Positive Prompt -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Prompt Positivo Combinado:</label>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <pre id="combinedPrompt" class="text-sm text-gray-700 whitespace-pre-wrap">${combinedPrompt}</pre>
+                        </div>
+                        <button onclick="app.copyToClipboard('${combinedPrompt.replace(/'/g, "\\'")}')" 
+                                class="mt-2 bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">
+                            <i class="fas fa-copy mr-1"></i>Copiar
+                        </button>
+                    </div>
+                    
+                    <!-- Combined Negative Prompt -->
+                    ${combinedNegativePrompt ? `
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Prompt Negativo Combinado:</label>
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <pre id="combinedNegativePrompt" class="text-sm text-gray-700 whitespace-pre-wrap">${combinedNegativePrompt}</pre>
+                            </div>
+                            <button onclick="app.copyToClipboard('${combinedNegativePrompt.replace(/'/g, "\\'")}')" 
+                                    class="mt-2 bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">
+                                <i class="fas fa-copy mr-1"></i>Copiar
+                            </button>
+                        </div>
+                    ` : ''}
+                    
+                    <!-- Models Used -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        ${allLoras.length > 0 ? `
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">LoRAs Utilizados:</label>
+                                <div class="bg-purple-50 p-3 rounded-lg">
+                                    ${allLoras.map(lora => `<span class="tag mr-1 mb-1">${lora.name || lora}</span>`).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                        ${allCheckpoints.length > 0 ? `
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Checkpoints Utilizados:</label>
+                                <div class="bg-green-50 p-3 rounded-lg">
+                                    ${allCheckpoints.map(checkpoint => `<span class="tag mr-1 mb-1">${checkpoint}</span>`).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <!-- Training Instructions -->
+                    <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                        <h4 class="font-semibold text-yellow-800 mb-2">
+                            <i class="fas fa-lightbulb mr-2"></i>Instruções para Treinamento
+                        </h4>
+                        <div class="text-sm text-yellow-700 space-y-2">
+                            <p><strong>1. Para LoRA Training:</strong> Use o prompt positivo combinado como descrição das imagens</p>
+                            <p><strong>2. Para Fine-tuning:</strong> Use tanto o prompt positivo quanto o negativo</p>
+                            <p><strong>3. Para Style Transfer:</strong> Use os prompts como referência de estilo</p>
+                            <p><strong>4. Recomendação:</strong> Treine com 20-50 imagens para melhor resultado</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+                        <button onclick="app.saveLearningPrompt('${combinedPrompt.replace(/'/g, "\\'")}', '${combinedNegativePrompt.replace(/'/g, "\\'")}')" 
+                                class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                            <i class="fas fa-save mr-2"></i>Salvar no Histórico
+                        </button>
+                        <button onclick="this.closest('.fixed').remove()" 
+                                class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">
+                            Fechar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    }
+
+    // Copy example prompt
+    copyExamplePrompt(example) {
+        const prompt = `Prompt: ${example.prompt}\n\nNegative Prompt: ${example.negativePrompt}\n\nSettings:\nSteps: ${example.steps}\nCFG Scale: ${example.cfgScale}\nSampler: ${example.sampler}\nSeed: ${example.seed}\n\nModels:\nCheckpoint: ${example.checkpoint}\nLoRAs: ${(example.loras || []).map(l => l.name || l).join(', ')}`;
+        
+        navigator.clipboard.writeText(prompt).then(() => {
+            this.showNotification('Prompt copiado para a área de transferência!', 'success');
+        });
+    }
+
+    // View example details
+    viewExampleDetails(example) {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+        modal.innerHTML = `
+            <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-2xl font-bold text-gray-900">Detalhes do Exemplo</h2>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="p-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div>
+                            <img src="${example.imageUrl}" alt="Example" class="w-full rounded-lg shadow-md">
+                        </div>
+                        
+                        <div class="space-y-4">
+                            ${example.prompt ? `
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Prompt Positivo:</label>
+                                    <div class="bg-gray-50 p-3 rounded-lg">
+                                        <pre class="text-sm text-gray-700 whitespace-pre-wrap">${example.prompt}</pre>
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            ${example.negativePrompt ? `
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Prompt Negativo:</label>
+                                    <div class="bg-gray-50 p-3 rounded-lg">
+                                        <pre class="text-sm text-gray-700 whitespace-pre-wrap">${example.negativePrompt}</pre>
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                ${example.steps ? `<div><strong>Steps:</strong> ${example.steps}</div>` : ''}
+                                ${example.cfgScale ? `<div><strong>CFG Scale:</strong> ${example.cfgScale}</div>` : ''}
+                                ${example.sampler ? `<div><strong>Sampler:</strong> ${example.sampler}</div>` : ''}
+                                ${example.seed ? `<div><strong>Seed:</strong> ${example.seed}</div>` : ''}
+                            </div>
+                            
+                            ${example.loras && example.loras.length > 0 ? `
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">LoRAs:</label>
+                                    <div class="flex flex-wrap gap-2">
+                                        ${example.loras.map(lora => `<span class="tag">${lora.name || lora}</span>`).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            ${example.checkpoint ? `
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Checkpoint:</label>
+                                    <p class="text-gray-700">${example.checkpoint}</p>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    }
+
+    // Save learning prompt to history
+    saveLearningPrompt(positivePrompt, negativePrompt) {
+        const history = JSON.parse(localStorage.getItem('promptHistory')) || [];
+        
+        const learningPrompt = `=== PROMPT DE APRENDIZADO ===\n\nPrompt Positivo:\n${positivePrompt}\n\nPrompt Negativo:\n${negativePrompt}\n\n=== INSTRUÇÕES ===\nUse este prompt combinado para treinar uma IA com o estilo dos exemplos.`;
+        
+        history.unshift({
+            prompt: learningPrompt,
+            timestamp: new Date().toISOString(),
+            type: 'learning'
+        });
+        
+        // Keep only last 20 prompts
+        if (history.length > 20) {
+            history.splice(20);
+        }
+        
+        localStorage.setItem('promptHistory', JSON.stringify(history));
+        this.showNotification('Prompt de aprendizado salvo no histórico!', 'success');
+    }
+
+    // ===== PROMPT ORGANIZER METHODS =====
+
+    // Open Prompt Organizer modal
+    openPromptOrganizer() {
+        const modal = document.getElementById('promptOrganizerModal');
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        this.renderPersonalPrompts();
+    }
+
+    // Close Prompt Organizer modal
+    closePromptOrganizer() {
+        document.getElementById('promptOrganizerModal').classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
+
+    // Open Add Personal Prompt modal
+    openAddPersonalPromptModal(promptId = null) {
+        this.currentPersonalPromptEditId = promptId;
+        const modal = document.getElementById('addPersonalPromptModal');
+        const title = document.getElementById('personalPromptModalTitle');
+        const form = document.getElementById('personalPromptForm');
+
+        if (promptId) {
+            const prompt = this.personalPrompts.find(p => p.id === promptId);
+            if (prompt) {
+                title.textContent = 'Editar Prompt Pessoal';
+                this.populatePersonalPromptForm(prompt);
+            }
+        } else {
+            title.textContent = 'Adicionar Prompt Pessoal';
+            form.reset();
+            this.clearImagePreview();
+        }
+
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    // Close Add Personal Prompt modal
+    closeAddPersonalPromptModal() {
+        document.getElementById('addPersonalPromptModal').classList.add('hidden');
+        document.body.style.overflow = 'auto';
+        this.currentPersonalPromptEditId = null;
+    }
+
+    // Handle image upload
+    handleImageUpload(event) {
+        const file = event.target.files[0];
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                this.showImagePreview(e.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    // Handle drag over
+    handleDragOver(event) {
+        event.preventDefault();
+        event.currentTarget.classList.add('border-indigo-500', 'bg-indigo-50');
+    }
+
+    // Handle drop
+    handleDrop(event) {
+        event.preventDefault();
+        event.currentTarget.classList.remove('border-indigo-500', 'bg-indigo-50');
+        
+        const files = event.dataTransfer.files;
+        if (files.length > 0) {
+            const file = files[0];
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.showImagePreview(e.target.result);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+    }
+
+    // Show image preview
+    showImagePreview(imageSrc) {
+        const preview = document.getElementById('imagePreview');
+        const previewImg = document.getElementById('previewImg');
+        const uploadArea = document.getElementById('imageUploadArea');
+        
+        if (imageSrc) {
+            previewImg.src = imageSrc;
+            preview.classList.remove('hidden');
+            uploadArea.classList.add('hidden');
+        } else {
+            preview.classList.add('hidden');
+            uploadArea.classList.remove('hidden');
+        }
+    }
+
+    // Clear image preview
+    clearImagePreview() {
+        const preview = document.getElementById('imagePreview');
+        const uploadArea = document.getElementById('imageUploadArea');
+        const fileInput = document.getElementById('personalPromptImage');
+        
+        preview.classList.add('hidden');
+        uploadArea.classList.remove('hidden');
+        fileInput.value = ''; // Clear file input
+    }
+
+    // Populate personal prompt form
+    populatePersonalPromptForm(prompt) {
+        document.getElementById('personalPromptTitle').value = prompt.title || '';
+        document.getElementById('personalPromptCategory').value = prompt.category || '';
+        document.getElementById('personalPromptTags').value = prompt.tags || '';
+        document.getElementById('personalPromptFavorite').checked = prompt.isFavorite || false;
+        document.getElementById('personalPromptPositive').value = prompt.positivePrompt || '';
+        document.getElementById('personalPromptNegative').value = prompt.negativePrompt || '';
+        document.getElementById('personalPromptSteps').value = prompt.steps || '';
+        document.getElementById('personalPromptCFG').value = prompt.cfgScale || '';
+        document.getElementById('personalPromptSampler').value = prompt.sampler || '';
+        document.getElementById('personalPromptSeed').value = prompt.seed || '';
+        document.getElementById('personalPromptCheckpoint').value = prompt.checkpoint || '';
+        document.getElementById('personalPromptLoras').value = prompt.loras || '';
+        document.getElementById('personalPromptNotes').value = prompt.notes || '';
+        document.getElementById('personalPromptImageUrl').value = prompt.imageUrl || '';
+        
+        if (prompt.imageUrl) {
+            this.showImagePreview(prompt.imageUrl);
+        }
+    }
+
+    // Handle personal prompt form submit
+    handlePersonalPromptSubmit(e) {
+        e.preventDefault();
+        
+        // Get image data (either from file upload or URL)
+        let imageData = '';
+        const imageFile = document.getElementById('personalPromptImage').files[0];
+        const imageUrl = document.getElementById('personalPromptImageUrl').value;
+        
+        if (imageFile) {
+            // Convert file to base64 for storage
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const promptData = {
+                    id: this.currentPersonalPromptEditId || Date.now(),
+                    title: document.getElementById('personalPromptTitle').value,
+                    category: document.getElementById('personalPromptCategory').value,
+                    tags: document.getElementById('personalPromptTags').value,
+                    isFavorite: document.getElementById('personalPromptFavorite').checked,
+                    positivePrompt: document.getElementById('personalPromptPositive').value,
+                    negativePrompt: document.getElementById('personalPromptNegative').value,
+                    steps: document.getElementById('personalPromptSteps').value,
+                    cfgScale: document.getElementById('personalPromptCFG').value,
+                    sampler: document.getElementById('personalPromptSampler').value,
+                    seed: document.getElementById('personalPromptSeed').value,
+                    checkpoint: document.getElementById('personalPromptCheckpoint').value,
+                    loras: document.getElementById('personalPromptLoras').value,
+                    notes: document.getElementById('personalPromptNotes').value,
+                    imageUrl: e.target.result, // Base64 data URL
+                    createdAt: this.currentPersonalPromptEditId ? 
+                        this.personalPrompts.find(p => p.id === this.currentPersonalPromptEditId)?.createdAt || new Date().toISOString() :
+                        new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                
+                this.savePromptData(promptData);
+            };
+            reader.readAsDataURL(imageFile);
+        } else {
+            // Use URL or existing image data
+            const promptData = {
+                id: this.currentPersonalPromptEditId || Date.now(),
+                title: document.getElementById('personalPromptTitle').value,
+                category: document.getElementById('personalPromptCategory').value,
+                tags: document.getElementById('personalPromptTags').value,
+                isFavorite: document.getElementById('personalPromptFavorite').checked,
+                positivePrompt: document.getElementById('personalPromptPositive').value,
+                negativePrompt: document.getElementById('personalPromptNegative').value,
+                steps: document.getElementById('personalPromptSteps').value,
+                cfgScale: document.getElementById('personalPromptCFG').value,
+                sampler: document.getElementById('personalPromptSampler').value,
+                seed: document.getElementById('personalPromptSeed').value,
+                checkpoint: document.getElementById('personalPromptCheckpoint').value,
+                loras: document.getElementById('personalPromptLoras').value,
+                notes: document.getElementById('personalPromptNotes').value,
+                imageUrl: imageUrl || (this.currentPersonalPromptEditId ? 
+                    this.personalPrompts.find(p => p.id === this.currentPersonalPromptEditId)?.imageUrl : ''),
+                createdAt: this.currentPersonalPromptEditId ? 
+                    this.personalPrompts.find(p => p.id === this.currentPersonalPromptEditId)?.createdAt || new Date().toISOString() :
+                    new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            
+            this.savePromptData(promptData);
+        }
+    }
+
+    // Save prompt data
+    savePromptData(promptData) {
+        console.log('Saving prompt data:', promptData); // Debug log
+        console.log('Image URL type:', typeof promptData.imageUrl); // Debug log
+        console.log('Image URL length:', promptData.imageUrl ? promptData.imageUrl.length : 'null'); // Debug log
+        
+        if (this.currentPersonalPromptEditId) {
+            const index = this.personalPrompts.findIndex(p => p.id === this.currentPersonalPromptEditId);
+            if (index !== -1) {
+                this.personalPrompts[index] = promptData;
+            }
+        } else {
+            this.personalPrompts.push(promptData);
+        }
+
+        this.savePersonalPrompts();
+        this.renderPersonalPrompts();
+        this.closeAddPersonalPromptModal();
+        this.showNotification('Prompt pessoal salvo com sucesso!', 'success');
+    }
+
+    // Render personal prompts
+    renderPersonalPrompts() {
+        const grid = document.getElementById('personalPromptsGrid');
+        const emptyState = document.getElementById('personalPromptsEmptyState');
+        
+        if (this.personalPrompts.length === 0) {
+            grid.innerHTML = '';
+            emptyState.classList.remove('hidden');
+            return;
+        }
+
+        emptyState.classList.add('hidden');
+        
+        const sortedPrompts = [...this.personalPrompts].sort((a, b) => {
+            if (a.isFavorite && !b.isFavorite) return -1;
+            if (!a.isFavorite && b.isFavorite) return 1;
+            return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+        
+        grid.innerHTML = sortedPrompts.map(prompt => this.createPersonalPromptCard(prompt)).join('');
+    }
+
+    // Create personal prompt card
+    createPersonalPromptCard(prompt) {
+        const tags = prompt.tags ? prompt.tags.split(',').slice(0, 3) : [];
+        
+        // Debug log
+        console.log('Creating card for:', prompt.title, 'Has image:', !!prompt.imageUrl);
+        
+        return `
+            <div class="personal-prompt-card bg-white border rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-200">
+                <div class="relative">
+                    ${prompt.imageUrl ? 
+                        `<img src="${prompt.imageUrl}" alt="${prompt.title}" class="w-full h-48 object-cover" onerror="console.log('Image failed to load:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">` : 
+                        ''
+                    }
+                    <div class="image-placeholder w-full h-48 ${prompt.imageUrl ? 'hidden' : ''}" style="display: ${prompt.imageUrl ? 'none' : 'flex'};">
+                        <i class="fas fa-image"></i>
+                    </div>
+                    
+                    <div class="absolute top-2 left-2">
+                        <span class="category-badge ${prompt.category || 'other'}">${prompt.category || 'Outro'}</span>
+                    </div>
+                    
+                    <button onclick="app.togglePersonalPromptFavorite(${prompt.id})" class="absolute top-2 right-2 favorite-star">
+                        <i class="fas fa-star ${prompt.isFavorite ? 'text-yellow-400' : 'text-gray-300'}"></i>
+                    </button>
+                </div>
+                
+                <div class="p-4">
+                    <h3 class="font-semibold text-gray-900 mb-2 line-clamp-2" title="${prompt.title}">${prompt.title}</h3>
+                    
+                    <div class="mb-3">
+                        <label class="text-xs font-medium text-gray-600">Prompt Positivo:</label>
+                        <p class="text-sm text-gray-700 line-clamp-2" title="${prompt.positivePrompt}">${prompt.positivePrompt}</p>
+                    </div>
+                    
+                    ${prompt.negativePrompt ? `
+                        <div class="mb-3">
+                            <label class="text-xs font-medium text-gray-600">Prompt Negativo:</label>
+                            <p class="text-sm text-gray-700 line-clamp-2" title="${prompt.negativePrompt}">${prompt.negativePrompt}</p>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="grid grid-cols-2 gap-2 text-xs text-gray-500 mb-3">
+                        ${prompt.steps ? `<div><i class="fas fa-layer-group mr-1"></i>Steps: ${prompt.steps}</div>` : ''}
+                        ${prompt.cfgScale ? `<div><i class="fas fa-sliders-h mr-1"></i>CFG: ${prompt.cfgScale}</div>` : ''}
+                        ${prompt.sampler ? `<div><i class="fas fa-cog mr-1"></i>${prompt.sampler}</div>` : ''}
+                        ${prompt.seed ? `<div><i class="fas fa-seedling mr-1"></i>Seed: ${prompt.seed}</div>` : ''}
+                    </div>
+                    
+                    ${tags.length > 0 ? `
+                        <div class="mb-3">
+                            ${tags.map(tag => `<span class="tag">${tag.trim()}</span>`).join('')}
+                            ${prompt.tags.split(',').length > 3 ? `<span class="tag">+${prompt.tags.split(',').length - 3}</span>` : ''}
+                        </div>
+                    ` : ''}
+                    
+                    <div class="flex justify-between items-center">
+                        <div class="flex space-x-2">
+                            <button onclick="app.viewPersonalPromptDetails(${prompt.id})" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                                <i class="fas fa-eye mr-1"></i>Ver
+                            </button>
+                            <button onclick="app.copyPersonalPrompt(${prompt.id})" class="text-green-600 hover:text-green-800 text-sm font-medium">
+                                <i class="fas fa-copy mr-1"></i>Copiar
+                            </button>
+                            <button onclick="app.openAddPersonalPromptModal(${prompt.id})" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                <i class="fas fa-edit mr-1"></i>Editar
+                            </button>
+                        </div>
+                        <button onclick="app.deletePersonalPrompt(${prompt.id})" class="text-red-600 hover:text-red-800 text-sm font-medium">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Toggle personal prompt favorite
+    togglePersonalPromptFavorite(promptId) {
+        const prompt = this.personalPrompts.find(p => p.id === promptId);
+        if (prompt) {
+            prompt.isFavorite = !prompt.isFavorite;
+            this.savePersonalPrompts();
+            this.renderPersonalPrompts();
+        }
+    }
+
+    // View personal prompt details
+    viewPersonalPromptDetails(promptId) {
+        const prompt = this.personalPrompts.find(p => p.id === promptId);
+        if (!prompt) return;
+
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+        modal.innerHTML = `
+            <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-2xl font-bold text-gray-900">${prompt.title}</h2>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="p-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div>
+                            ${prompt.imageUrl ? 
+                                `<img src="${prompt.imageUrl}" alt="${prompt.title}" class="w-full rounded-lg shadow-md" onerror="console.log('Detail image failed to load:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">` : 
+                                ''
+                            }
+                            <div class="image-placeholder w-full h-64 rounded-lg ${prompt.imageUrl ? 'hidden' : ''}" style="display: ${prompt.imageUrl ? 'none' : 'flex'};">
+                                <i class="fas fa-image"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="category-badge ${prompt.category || 'other'}">${prompt.category || 'Outro'}</span>
+                                <button onclick="app.togglePersonalPromptFavorite(${prompt.id})" class="favorite-star">
+                                    <i class="fas fa-star ${prompt.isFavorite ? 'text-yellow-400' : 'text-gray-300'}"></i>
+                                </button>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Prompt Positivo:</label>
+                                <div class="bg-gray-50 p-3 rounded-lg">
+                                    <pre class="text-sm text-gray-700 whitespace-pre-wrap">${prompt.positivePrompt}</pre>
+                                </div>
+                                <button onclick="app.copyToClipboard('${prompt.positivePrompt.replace(/'/g, "\\'")}')" class="copy-btn mt-2">
+                                    <i class="fas fa-copy mr-1"></i>Copiar
+                                </button>
+                            </div>
+                            
+                            ${prompt.negativePrompt ? `
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Prompt Negativo:</label>
+                                    <div class="bg-gray-50 p-3 rounded-lg">
+                                        <pre class="text-sm text-gray-700 whitespace-pre-wrap">${prompt.negativePrompt}</pre>
+                                    </div>
+                                    <button onclick="app.copyToClipboard('${prompt.negativePrompt.replace(/'/g, "\\'")}')" class="copy-btn mt-2">
+                                        <i class="fas fa-copy mr-1"></i>Copiar
+                                    </button>
+                                </div>
+                            ` : ''}
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                ${prompt.steps ? `<div><strong>Steps:</strong> ${prompt.steps}</div>` : ''}
+                                ${prompt.cfgScale ? `<div><strong>CFG Scale:</strong> ${prompt.cfgScale}</div>` : ''}
+                                ${prompt.sampler ? `<div><strong>Sampler:</strong> ${prompt.sampler}</div>` : ''}
+                                ${prompt.seed ? `<div><strong>Seed:</strong> ${prompt.seed}</div>` : ''}
+                            </div>
+                            
+                            ${prompt.checkpoint ? `
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Checkpoint:</label>
+                                    <p class="text-gray-700">${prompt.checkpoint}</p>
+                                </div>
+                            ` : ''}
+                            
+                            ${prompt.loras ? `
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">LoRAs:</label>
+                                    <p class="text-gray-700">${prompt.loras}</p>
+                                </div>
+                            ` : ''}
+                            
+                            ${prompt.notes ? `
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Notas:</label>
+                                    <p class="text-gray-700">${prompt.notes}</p>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    }
+
+    // Copy personal prompt
+    copyPersonalPrompt(promptId) {
+        const prompt = this.personalPrompts.find(p => p.id === promptId);
+        if (!prompt) return;
+        
+        const fullPrompt = `Prompt: ${prompt.positivePrompt}\n\nNegative Prompt: ${prompt.negativePrompt}\n\nSettings:\nSteps: ${prompt.steps}\nCFG Scale: ${prompt.cfgScale}\nSampler: ${prompt.sampler}\nSeed: ${prompt.seed}\n\nModels:\nCheckpoint: ${prompt.checkpoint}\nLoRAs: ${prompt.loras}`;
+        
+        navigator.clipboard.writeText(fullPrompt).then(() => {
+            this.showNotification('Prompt copiado para a área de transferência!', 'success');
+        });
+    }
+
+    // Delete personal prompt
+    deletePersonalPrompt(promptId) {
+        if (confirm('Tem certeza que deseja excluir este prompt pessoal?')) {
+            this.personalPrompts = this.personalPrompts.filter(p => p.id !== promptId);
+            this.savePersonalPrompts();
+            this.renderPersonalPrompts();
+            this.showNotification('Prompt pessoal excluído com sucesso!', 'success');
+        }
+    }
+
+    // Save personal prompts
+    savePersonalPrompts() {
+        localStorage.setItem('personalPrompts', JSON.stringify(this.personalPrompts));
+    }
+
+    // Debug method to test image display
+    testImageDisplay() {
+        console.log('Current personal prompts:', this.personalPrompts);
+        this.personalPrompts.forEach((prompt, index) => {
+            console.log(`Prompt ${index}:`, {
+                title: prompt.title,
+                hasImageUrl: !!prompt.imageUrl,
+                imageUrlLength: prompt.imageUrl ? prompt.imageUrl.length : 0,
+                imageUrlStart: prompt.imageUrl ? prompt.imageUrl.substring(0, 50) : 'null'
+            });
+        });
+    }
+
+    // Test method to add a sample prompt with image
+    addTestPrompt() {
+        const testPrompt = {
+            id: Date.now(),
+            title: 'Teste com Imagem',
+            category: 'portrait',
+            tags: 'teste, debug',
+            isFavorite: false,
+            positivePrompt: 'Teste de prompt positivo',
+            negativePrompt: 'Teste de prompt negativo',
+            steps: '20',
+            cfgScale: '7',
+            sampler: 'DPM++ 2M',
+            seed: '123456',
+            checkpoint: 'Test Checkpoint',
+            loras: 'Test LoRA',
+            notes: 'Prompt de teste',
+            imageUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNjY3ZWVhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxOCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5UZXN0ZTwvdGV4dD48L3N2Zz4=',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+        
+        this.personalPrompts.push(testPrompt);
+        this.savePersonalPrompts();
+        this.renderPersonalPrompts();
+        console.log('Test prompt added with SVG image');
     }
 }
 
